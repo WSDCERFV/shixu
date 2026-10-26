@@ -1,0 +1,38 @@
+{
+  "name": "shixu-desktop",
+  "version": "0.8.0",
+  "private": true,
+  "description": "时序 Shixu：可预览、可编辑的 AI 桌面时间规划工具",
+  "main": "main.cjs",
+  "scripts": {
+    "prepare-ui": "node build-ui.cjs",
+    "start": "node build-ui.cjs && electron .",
+    "test": "node --test test/*.test.cjs",
+    "package": "node build-ui.cjs && node package.cjs",
+    "dist": "node build-ui.cjs && electron-builder --config electron-builder.cjs --win nsis --x64 --publish never",
+    "package:preview": "node build-ui.cjs && node package-preview.cjs",
+    "test:desktop": "node test/e2e/check-minimal-mode.cjs && node test/e2e/check-release-calendar.cjs && node test/e2e/check-robustness.cjs"
+  },
+  "dependencies": {
+    "lucide": "0.468.0",
+    "nodemailer": "10.2.1"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "playwright": "1.62.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WSDCERFV/shixu.git"
+  },
+  "homepage": "https://github.com/WSDCERFV/shixu",
+  "bugs": {
+    "url": "https://github.com/WSDCERFV/shixu/issues"
+  },
+  "author": "WSDCERFV",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "license": "MIT"
+}

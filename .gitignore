@@ -1,0 +1,33 @@
+# Dependencies and build products
+**/node_modules/
+outputs/
+work/
+.test-artifacts/
+coverage/
+*.log
+
+# Generated offline UI: rebuild with npm run prepare-ui
+desktop/renderer.html
+desktop/native-detail.html
+desktop/lucide.js
+
+# Personal records, credentials and local caches
+**/预览数据/
+**/.runtime/
+**/workspace.json*
+**/secrets.json*
+**/mailbox.json*
+**/mail-log.json*
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.p12
+*.key
+
+# Editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

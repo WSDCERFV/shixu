@@ -1,0 +1,16 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs/promises'),os=require('node:os'),path=require('node:path');
+const {createLocalStore,validateWorkspace}=require('../local-store.cjs');
+const cleanup=async dir=>{assert.ok(path.isAbsolute(dir)&&dir.startsWith(path.join(os.tmpdir(),'shixu-store-')));await fs.rm(dir,{recursive:true,force:true});};
+const workspace=title=>({privateContent:{v:3,p:{zoom:100},e:[['task-1','2026-10-24',title,'09:00','10:00',3,'todo',[]]]}});
+test('atomic records recover from a truncated primary while retaining the damaged file',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'shixu-store-'));try{const store=createLocalStore(dir);await store.write('workspace.json',workspace('已保存的任务'));await store.write('workspace.json',workspace('较新的任务'));await fs.writeFile(path.join(dir,'workspace.json'),'{broken');const loaded=await store.read('workspace.json',null);assert.equal(loaded.privateContent.e[0][2],'已保存的任务');assert.deepEqual(store.recovered,['workspace.json']);assert.ok((await fs.readdir(dir)).some(n=>n.includes('.corrupt-')));assert.equal(JSON.parse(await fs.readFile(path.join(dir,'workspace.json'),'utf8')).privateContent.e[0][2],'已保存的任务');}finally{await cleanup(dir);}
+});
+test('invalid schemas never overwrite the last good workspace and a failed write can be retried',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'shixu-store-'));try{const store=createLocalStore(dir);await store.write('workspace.json',workspace('保留'));await assert.rejects(store.write('workspace.json',{privateContent:{v:3,p:{},e:[null]}}));assert.equal((await store.read('workspace.json',null)).privateContent.e[0][2],'保留');await fs.rename(path.join(dir,'workspace.json'),path.join(dir,'saved'));await fs.mkdir(path.join(dir,'workspace.json'));await assert.rejects(store.write('workspace.json',workspace('待重试')));await fs.rmdir(path.join(dir,'workspace.json'));await store.write('workspace.json',workspace('已重试'));assert.equal((await store.read('workspace.json',null)).privateContent.e[0][2],'已重试');}finally{await cleanup(dir);}
+});
+test('queued writes capture the submitted snapshot instead of a subsequently mutated object',async()=>{
+ const dir=await fs.mkdtemp(path.join(os.tmpdir(),'shixu-store-'));try{const store=createLocalStore(dir),value=workspace('提交时');const a=store.write('workspace.json',value);value.privateContent.e[0][2]='尚未提交';await a;assert.equal((await store.read('workspace.json',null)).privateContent.e[0][2],'提交时');const b=store.write('workspace.json',workspace('第二次')),c=store.write('workspace.json',workspace('第三次'));await Promise.all([b,c]);assert.equal((await store.read('workspace.json',null)).privateContent.e[0][2],'第三次');assert.equal(JSON.parse(await fs.readFile(path.join(dir,'workspace.json.bak'),'utf8')).privateContent.e[0][2],'第二次');}finally{await cleanup(dir);}
+});
+test('workspace validation rejects duplicate IDs, impossible dates and corrupt display settings',()=>{
+ for(const change of [s=>s.e.push(s.e[0]),s=>s.e[0][1]='2026-02-30',s=>s.p.zoom=0,s=>s.goalPlans=[null],s=>s.chats={sessions:[{id:'a',title:'a',messages:[]}]},s=>s.selectedDate='not-a-date']){const data=workspace('任务');change(data.privateContent);assert.throws(()=>validateWorkspace(data));}assert.doesNotThrow(()=>validateWorkspace(workspace('正常任务')));
+});
