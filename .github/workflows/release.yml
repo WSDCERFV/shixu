@@ -37,6 +37,9 @@ jobs:
           node -e "const v=require('./desktop/package.json').version; if(!/^v\d+\.\d+\.\d+$/.test(process.env.RELEASE_TAG)||process.env.RELEASE_TAG!=='v'+v)throw new Error('Tag must match package version');"
       - run: npm ci
         working-directory: desktop
+      - name: Install Electron runtime
+        run: node node_modules/electron/install.js
+        working-directory: desktop
       - run: npm test
         working-directory: desktop
       - run: npm run dist
