@@ -1,5 +1,13 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const {parseSeuCourses}=require('../seu-courses.cjs');
+const {normalizeTerms,semesterMonday}=require('../seu-courses.cjs');
+test('school semester labels override numeric suffix assumptions and summer never inherits an autumn date',()=>{
+ const terms=normalizeTerms([{DM:'2026-2027-1',MC:'2026-2027学年暑期学期'},{DM:'2026-2027-3',MC:'2026-2027学年秋季学期'},{DM:'2026-2027-2',MC:'2026-2027学年春季学期'}]);
+ assert.equal(terms[0].summer,true);assert.equal(terms[0].firstMonday,'');assert.equal(terms[1].firstMonday,'2026-09-21');assert.equal(terms[2].firstMonday,'2027-02-22');
+ assert.equal(semesterMonday({name:'2026-2027-1'}),'');assert.equal(semesterMonday({name:'2027-2028学年秋季学期'}),'');
+ assert.throws(()=>normalizeTerms([{DM:'x',MC:'秋季'},{DM:'x',MC:'暑期'}]),/重复/);
+ assert.throws(()=>parseSeuCourses({termCode:terms[0].code,termName:terms[0].name,rows:[]},{}),/周一/);
+});
 test('SEU rows expand by semester Monday, official periods and odd/even weeks with stable IDs',()=>{
  const payload={termCode:'2026-2027-1',termName:'秋季学期',rows:[{KCM:'高等数学',KCH:'MATH',SKXQ:'2',KSJC:'1',JSJC:'2',ZCMC:'1-5周(单)',SKJS:'教师',JASMC:'J101'}]};
  const a=parseSeuCourses(payload,{firstMonday:'2026-09-21',excludeEnded:false}),b=parseSeuCourses(payload,{firstMonday:'2026-09-21',excludeEnded:false});

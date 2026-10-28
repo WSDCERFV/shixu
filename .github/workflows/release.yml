@@ -1,0 +1,87 @@
+name: Publish Windows release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing stable tag, e.g. v0.8.5'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Validate stable version
+        shell: pwsh
+        run: |
+          node -e "const v=require('./desktop/package.json').version; if(!/^v\d+\.\d+\.\d+$/.test(process.env.RELEASE_TAG)||process.env.RELEASE_TAG!=='v'+v)throw new Error('Tag must match package version');"
+      - run: npm ci
+        working-directory: desktop
+      - run: npm test
+        working-directory: desktop
+      - run: npm run dist
+        working-directory: desktop
+      - run: node release-metadata.cjs
+        working-directory: desktop
+      - run: npm run package:preview
+        working-directory: desktop
+      - name: Prepare downloads
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Get-Content -LiteralPath desktop/package.json -Raw | ConvertFrom-Json).version
+          $installerDirectory = Join-Path outputs "时序安装包-$version"
+          $releaseDirectory = Join-Path outputs release
+          New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $installerDirectory "Shixu-$version-setup-x64.exe"), (Join-Path $installerDirectory "Shixu-$version-setup-x64.exe.blockmap"), (Join-Path $installerDirectory 'latest.yml') -Destination $releaseDirectory
+          Compress-Archive -LiteralPath (Join-Path outputs "时序免安装预览-$version") -DestinationPath (Join-Path $releaseDirectory "Shixu-$version-preview-win-x64.zip")
+          $sourceArchive = Join-Path $releaseDirectory "Shixu-$version-source.zip"
+          git archive --format=zip "--prefix=shixu-$version/" "--output=$sourceArchive" HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Source archive failed' }
+          $sums = Get-ChildItem -LiteralPath $releaseDirectory -File | ForEach-Object { ((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLower()) + '  ' + $_.Name }
+          Set-Content -LiteralPath (Join-Path $releaseDirectory SHA256SUMS.txt) -Value $sums -Encoding utf8
+      - name: Publish all assets together
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $notesFile = Join-Path docs/releases ($env:RELEASE_TAG + '.md')
+          $notesArguments = @('--generate-notes')
+          if (Test-Path -LiteralPath $notesFile) { $notesArguments = @('--notes-file', $notesFile) }
+          $existing = gh release view $env:RELEASE_TAG --json isDraft --jq '.isDraft' 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ($existing -ne 'true') { throw 'This version is already published. Bump the version instead of replacing installed updates.' }
+          } else {
+            gh release create $env:RELEASE_TAG --verify-tag --draft --title "时序 Shixu $env:RELEASE_TAG" @notesArguments
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create release draft' }
+          }
+          if (Test-Path -LiteralPath $notesFile) {
+            gh release edit $env:RELEASE_TAG --notes-file $notesFile
+            if ($LASTEXITCODE -ne 0) { throw 'Could not update release notes' }
+          }
+          $assets = @(Get-ChildItem -LiteralPath outputs/release -File | ForEach-Object { $_.FullName })
+          gh release upload $env:RELEASE_TAG @assets --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release assets did not finish uploading; release remains a draft' }
+          gh release edit $env:RELEASE_TAG --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Could not publish release' }

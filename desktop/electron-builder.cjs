@@ -1,4 +1,5 @@
 const files = require('./release-files.cjs');
+const runtime = require('./runtime-dependencies.cjs').runtimePackages();
 module.exports = {
   appId: 'local.shixu.desktop',
   productName: '时序',
@@ -7,7 +8,8 @@ module.exports = {
   asar: true,
   electronDist: 'node_modules/electron/dist',
   npmRebuild: false,
-  files: [...files, 'package.json', 'node_modules/nodemailer/**', '!node_modules/lucide/**'],
+  files: [...files, 'package.json', ...runtime.map(p=>p.relative+'/**'), '!node_modules/lucide/**'],
+  publish: [{ provider: 'github', owner: 'WSDCERFV', repo: 'shixu', releaseType: 'release' }],
   extraFiles: [
     { from: '使用说明.md', to: '使用说明.md' },
     { from: '../THIRD_PARTY_NOTICES.md', to: 'THIRD_PARTY_NOTICES.md' },
@@ -29,6 +31,6 @@ module.exports = {
     installerLanguages: ['zh_CN', 'en_US'],
     language: '2052',
     runAfterFinish: false,
-    artifactName: '时序-${version}-安装程序-${arch}.${ext}'
+    artifactName: 'Shixu-${version}-setup-${arch}.${ext}'
   }
 };

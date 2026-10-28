@@ -148,6 +148,27 @@
     }
     return { events: [...unique.values()], errors: parsed.errors, duplicates: parsed.events.length - unique.size, school };
   }
-  const api = { validDate, validTime, addDay, weekday, hash, normalizePlan, routineEvents, parseCourses, parseWeeks };
+  const isCourse=e=>e?.source==='course-import';
+  function courseEditScope(text,context={}){
+    const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,''),raw=normalize(text),parts=raw.split(/[，。；;,\n]|其他/),negative=/(?:不要|不用|不需要|无需|不必|别|不许).{0,8}(?:改|动|调|移|删|取消)|不改动|不改|不动|保持(?:原样|不变|原时间)/;
+    const request=parts.filter(p=>!negative.test(p)).join('，'),change=/(?:调课|改期|改到|改成|改为|挪|移到|换到|提前|推迟|延后|取消|删除|停课|修改|调整)/.test(request),items=new Map();
+    for(const e of [...(context.events||[]),...(context.protectedDrafts||[]).map(d=>d.event),...(context.drafts||[]).map(d=>d.event)])if(isCourse(e)&&e.id)items.set(e.id,e);
+    if(!change)return {editableIds:[],allowDelete:false,truncated:false};
+    const source=request.split(/改到|改成|改为|挪到|移到|换到|推迟到|提前到|延后到|调整到/)[0],selected=validDate(context.selectedDate)?context.selectedDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),now=Number.isFinite(Date.parse(context.now))?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(context.now)):selected;
+    const dates=new Set((source.match(/\d{4}-\d{2}-\d{2}/g)||[]).filter(validDate)),monthDays=[...source.matchAll(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?/g)];
+    for(const m of monthDays)for(const e of items.values())if(e.date?.slice(5)===m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')&&(!m[1]||e.date.startsWith(m[1]+'-')))dates.add(e.date);
+    for(const [word,offset] of [['今天',0],['明天',1],['后天',2]])if(source.includes(word))dates.add(addDay(now,offset));
+    const week=source.match(/(下周|本周|这周|周|星期)([一二三四五六日天])/);if(week){const day='一二三四五六日'.indexOf(week[2]==='天'?'日':week[2])+1;dates.add(addDay(selected,1-weekday(selected)+(week[1]==='下周'?7:0)+day-1));}
+    let candidates=[...items.values()].filter(e=>{const title=normalize(e.title);return title&&(request.includes(title)||request.includes(e.id))&&!parts.some(p=>negative.test(p)&&p.includes(title))&&!new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:的)?(?:复习|学习|作业|练习|预习)').test(request);});
+    if(!candidates.length&&/^(?:请|帮我|把|再)*(?:它|这门课|这节课|这个事件|这个任务|改到|改成|改为|调整到)/.test(request)&&items.has(context.focusedEventId))candidates=[items.get(context.focusedEventId)];
+    if(dates.size)candidates=candidates.filter(e=>dates.has(e.date));
+    else if(!candidates.some(e=>{const title=normalize(e.title),at=source.indexOf(title);return /(?:每周|整学期|整个学期|所有|全部)(?:的)?$/.test(source.slice(Math.max(0,at-8),at));})){const days=[...new Set(candidates.map(e=>e.date).filter(validDate))].sort(),chosen=days.find(d=>d===selected)||days.find(d=>d>=selected);candidates=candidates.filter(e=>e.date===chosen);}
+    return {editableIds:candidates.slice(0,30).map(e=>e.id),allowDelete:/(?:取消|删除|停课)/.test(request),truncated:candidates.length>30};
+  }
+  function cleanConfirmedCourseDrafts(drafts,events,confirmed,applied){
+    if(!confirmed)return drafts;const saved=new Map(events.map(e=>[e.id,e])),fields=['date','title','start','end','priority','tags','content','state','planId'];
+    return drafts.flatMap(d=>{const old=saved.get(d.event?.id);if(!isCourse(old))return [d];if(applied||fields.every(k=>JSON.stringify(d.event[k]??'')===JSON.stringify(old[k]??'')))return [];if(!d.before&&!d.manual?.length)return [];return [{...d,before:d.before||JSON.parse(JSON.stringify(old)),action:d.action==='delete'?'delete':'update',...(!d.courseAuthorized&&!d.manual?.length?{selected:false,assumption:'旧版遗留的课程建议已取消勾选；请重新指定调课要求，或手动核对后再勾选。'}:{})}];});
+  }
+  const api = { validDate, validTime, addDay, weekday, hash, normalizePlan, routineEvents, parseCourses, parseWeeks, isCourse, courseEditScope, cleanConfirmedCourseDrafts };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else global.FocusDomain = api;
 })(typeof window === 'undefined' ? globalThis : window);

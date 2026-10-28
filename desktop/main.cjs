@@ -6,6 +6,7 @@ const {createSeuImporter}=require('./seu-importer.cjs');
 const {createDetailWindow}=require('./detail-window.cjs');
 const {createLocalStore,validateWorkspace}=require('./local-store.cjs');
 const {configureStoragePaths}=require('./storage-paths.cjs');
+const {createUpdateControl}=require('./updates.cjs');
 const startup=require('./startup.cjs').createStartupControl(app);
 try { configureStoragePaths(app); }
 catch(error) { require('electron').dialog.showErrorBox('无法使用本地存储目录', error.message + '\n应用已停止启动，不会改用其他目录或覆盖原记录。'); app.exit(1); }
@@ -14,6 +15,8 @@ app.setAppUserModelId('local.shixu.desktop');
 const primary=app.requestSingleInstanceLock();
 if(!primary)app.quit();
 let win, reminder, timerPopup, seuImporter, detailWindow, state = null, vault = {}, mailbox = { enabled: false, host: 'smtp.qq.com', port: 465, from: '', to: '' }, mailLog = [], mailBusy = false, writeQueue = Promise.resolve(),secretQueue=Promise.resolve(),allowClose=false;
+let aiRequest = null;
+let updates,updateStartupTimer;
 const store=createLocalStore(app.getPath('userData'));
 const rendererURL = pathToFileURL(path.join(__dirname, 'renderer.html')).href;
 const read=(name,fallback)=>store.read(name,fallback);
@@ -103,12 +106,52 @@ if(primary)app.whenReady().then(async () => {
   });
   handle('startup-status', () => startup.status());
   handle('startup-set', enabled => startup.set(enabled));
+  const preview=require('./package.json').name==='shixu-preview';
+  const updateMode=preview?'preview':!app.isPackaged||process.env.SHIXU_DATA_DIR?'development':'installed';
+  updates=createUpdateControl({currentVersion:app.getVersion(),mode:updateMode,onChange:value=>{if(win&&!win.isDestroyed())win.webContents.send('update-status',value);},
+    makeToken:()=>new (require('electron-updater').CancellationToken)(),
+    getUpdater:()=>{
+      const {NsisUpdater}=require('electron-updater');
+      // Cache update files alongside application cache, away from personal records.
+      const adapter={whenReady:()=>app.whenReady(),version:app.getVersion(),name:'Shixu',isPackaged:app.isPackaged,userDataPath:app.getPath('userData'),baseCachePath:path.join(path.dirname(app.getPath('sessionData')),'Updates'),appUpdateConfigPath:path.join(process.resourcesPath,'app-update.yml'),
+        quit:()=>{if(updates.status().stage==='installing')app.quit();else allowClose=false;},relaunch:()=>app.relaunch(),onQuit:callback=>app.once('quit',(_e,code)=>callback(code))};
+      const updater=new NsisUpdater(null,adapter);
+      // A custom app adapter needs the normal Electron HTTP executor explicitly.
+      const {ElectronHttpExecutor}=require('electron-updater/out/electronHttpExecutor');
+      updater.httpExecutor=new ElectronHttpExecutor((authInfo,callback)=>updater.emit('login',authInfo,callback));
+      return updater;
+    }});
+  handle('update-status',()=>updates.status());
+  handle('update-check',()=>updates.check());
+  handle('update-download',()=>updates.download());
+  handle('update-cancel',()=>updates.cancel());
+  handle('update-release',async()=>{await require('electron').shell.openExternal(updates.status().releaseURL);return true;});
+  handle('update-install',async()=>{
+    await secretQueue;await writeQueue;await updates.prepareInstall();aiRequest?.controller.abort();allowClose=true;
+    try{const value=updates.install();if(value.stage==='error')allowClose=false;return value;}catch(error){allowClose=false;throw error;}
+  });
   handle('boot-failed',()=>{require('electron').dialog.showErrorBox('无法恢复本地工作区','本地记录无法完整恢复，已停止启动以保护原文件。请保留用户数据目录及其中的备份。');allowClose=true;win.close();return true;});
   handle('window-action', async action => { if (action === 'minimize') win.minimize(); else if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); else if (action === 'close') { await secretQueue;await writeQueue;allowClose=true;win.close(); } return win?.isMaximized(); });
   handle('save-key', async (id, value) => { if (!/^[\w-]{1,100}$/.test(id)) throw new Error('供应商编号无效。'); await putSecret('api:' + id, value); return true; });
   handle('has-key', id => !!vault['api:' + id]);
   handle('copy-key', async (from, to) => { const key = await secret('api:' + from); if (key) await putSecret('api:' + to, key); return true; });
-  handle('chat', async input => { if (JSON.stringify(input).length > 250000 || !Array.isArray(input.messages)) throw new Error('对话太长，请开始新对话。'); const p = provider(state?.privateContent?.activePlan, 'plan'); return services.chat(p, await secret('api:' + p.id), input); });
+  handle('chat', async input => {
+    if (!input || JSON.stringify(input).length > 6000000 || !Array.isArray(input.messages)) throw new Error('对话太长，请开始新对话。');
+    if (aiRequest) throw new Error('已有回复正在生成，请先停止或等待完成。');
+    const p = provider(state?.privateContent?.activePlan, 'plan');
+    const current = { id: String(input.requestId || '').slice(0, 100), controller: new AbortController(), lastSent: 0 }; aiRequest = current;
+    try {
+      const key = await secret('api:' + p.id); current.controller.signal.throwIfAborted();
+      return await services.chat(p, key, input, { signal: current.controller.signal, onProgress: value => {
+        if (aiRequest !== current || current.controller.signal.aborted || win?.isDestroyed()) return;
+        const send = () => { current.lastSent = Date.now(); current.lastPhase = value.phase; win?.webContents.send('chat-progress', { requestId: current.id, ...value }); };
+        clearTimeout(current.timer);
+        if (Date.now() - current.lastSent >= 50 || current.lastPhase !== value.phase) send();
+        else current.timer = setTimeout(() => { if (aiRequest === current && !current.controller.signal.aborted && win && !win.isDestroyed()) send(); }, 50);
+      } });
+    } finally { clearTimeout(current.timer); if (aiRequest === current) aiRequest = null; }
+  });
+  handle('chat-cancel', id => { if (aiRequest?.id === id) aiRequest.controller.abort(); return true; });
   handle('transcribe', async (bytes, mime) => { const p = provider(state?.privateContent?.activeVoice, 'voice'); return services.transcribe(p, await secret('api:' + p.id), new Uint8Array(bytes), mime); });
   handle('mail-save', async (config, auth) => { const next = services.validateMailbox(config); if (auth) await putSecret('smtp', auth); if (next.enabled && !vault.smtp) throw new Error('开启邮件提醒前请填写授权码。'); await write('mailbox.json', next); mailbox = next; return mailStatus(); });
   handle('mail-status', () => mailStatus());
@@ -128,8 +171,9 @@ if(primary)app.whenReady().then(async () => {
   win.webContents.on('will-navigate', e => e.preventDefault());
   win.on('close',e=>{if(!allowClose){e.preventDefault();win.webContents.send('request-close');}});
   for (const event of ['maximize', 'unmaximize']) win.on(event, () => win.webContents.send('window-state', win.isMaximized()));
-  win.on('closed', () => { win = null; reminder?.destroy(); timerPopup?.destroy(); seuImporter?.cancel(); detailWindow?.destroy(); });
+  win.on('closed', () => { clearTimeout(updateStartupTimer);updates?.dispose();aiRequest?.controller.abort(); win = null; reminder?.destroy(); timerPopup?.destroy(); seuImporter?.cancel(); detailWindow?.destroy(); });
   await win.loadFile(path.join(__dirname,'renderer.html'));
+  if(state?.privateContent?.p?.checkUpdatesOnStart)updateStartupTimer=setTimeout(()=>updates.check().catch(()=>{}),10000);
   setInterval(() => checkMail().catch(() => {}), 5000);
 });
 app.on('window-all-closed', () => app.quit());

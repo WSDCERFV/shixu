@@ -3,8 +3,23 @@ const D = require('./planner-domain.cjs');
 const periods = ['08:00-08:45','08:50-09:35','09:50-10:35','10:40-11:25','11:30-12:15','14:00-14:45','14:50-15:35','15:50-16:35','16:40-17:25','17:30-18:15','19:00-19:45','19:50-20:35','20:40-21:25'];
 // SEU 2026–2027 official academic calendar. Other terms require a calendar override.
 const semesterMondays={'2026-2027-1':'2026-09-21','2026-2027-2':'2027-02-22'};
+// Live imports identify the semester by the school's label, never by its numeric suffix.
+function semesterMonday(term) {
+  const name=String(term?.name||''),year=name.match(/(20\d{2})\s*[-—–/]\s*(20\d{2})/);
+  if(!year||Number(year[2])!==Number(year[1])+1||/暑|夏|短学期/.test(name))return '';
+  const season=/秋/.test(name)?'1':/春/.test(name)?'2':'';
+  return season?semesterMondays[year[1]+'-'+year[2]+'-'+season]||'':'';
+}
+function normalizeTerms(rows) {
+  if(!Array.isArray(rows)||!rows.length||rows.length>300)throw new Error('学校未返回有效的学期列表，请重新登录“我的课表”。');
+  const seen=new Set();return rows.map(row=>{
+    const code=String(row?.DM||'').trim(),name=String(row?.MC||'').trim();
+    if(!code||code.length>80||!name||name.length>150||seen.has(code))throw new Error('学校学期列表缺少名称或包含重复编号，已停止读取。');seen.add(code);
+    return {code,name,firstMonday:semesterMonday({name}),summer:/暑|夏|短学期/.test(name)};
+  });
+}
 function parseSeuCourses(payload, options) {
-  options={...options,firstMonday:options.firstMonday||semesterMondays[payload.termCode]};
+  options={...options,firstMonday:options.firstMonday||(payload.termName?semesterMonday({name:payload.termName}):semesterMondays[payload.termCode])};
   if (!D.validDate(options.firstMonday) || D.weekday(options.firstMonday) !== 1) throw new Error('请选择第 1 教学周的周一，按学校校历核对。');
   if (!Array.isArray(payload.rows) || payload.rows.length > 2000) throw new Error('学校返回的课表格式不正确。');
   const events = [], errors = [], stamp = new Date().toISOString();
@@ -24,4 +39,4 @@ function parseSeuCourses(payload, options) {
   const upcoming=options.excludeEnded===false?all:all.filter(e=>Date.parse(e.date+'T'+e.end+':00+08:00')>cutoff);
   return {school:'东南大学',termCode:payload.termCode,termName:payload.termName,firstMonday:options.firstMonday,events:upcoming,totalCount:all.length,skippedPast:all.length-upcoming.length,errors};
 }
-module.exports = {parseSeuCourses,periods,semesterMondays};
+module.exports = {parseSeuCourses,periods,semesterMondays,semesterMonday,normalizeTerms};

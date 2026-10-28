@@ -23,6 +23,22 @@
 ; Never force-stop an app: its editors may contain unsaved personal records.
 ; This hook is shared by installer and uninstaller, including silent upgrades.
 !macro customCheckAppRunning
+  ; The updater starts the installer just before the old process exits.
+  ; Wait briefly for that normal exit without terminating any process.
+  ${If} ${isUpdated}
+    StrCpy $R1 0
+    ${Do}
+      ${nsProcess::FindProcess} "${APP_EXECUTABLE_FILENAME}" $R0
+      ${If} $R0 != 0
+        ${ExitDo}
+      ${EndIf}
+      IntOp $R1 $R1 + 1
+      ${If} $R1 >= 40
+        ${ExitDo}
+      ${EndIf}
+      Sleep 250
+    ${Loop}
+  ${EndIf}
   ${nsProcess::FindProcess} "${APP_EXECUTABLE_FILENAME}" $R0
   ${If} $R0 == 0
     MessageBox MB_OK|MB_ICONEXCLAMATION "请先保存并退出所有时序窗口，再重新运行安装或卸载程序。当前操作已取消，不会强制关闭应用。" /SD IDOK

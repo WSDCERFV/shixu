@@ -1,6 +1,6 @@
 {
   "name": "shixu-desktop",
-  "version": "0.8.0",
+  "version": "0.8.5",
   "private": true,
   "description": "时序 Shixu：可预览、可编辑的 AI 桌面时间规划工具",
   "main": "main.cjs",
@@ -11,9 +11,10 @@
     "package": "node build-ui.cjs && node package.cjs",
     "dist": "node build-ui.cjs && electron-builder --config electron-builder.cjs --win nsis --x64 --publish never",
     "package:preview": "node build-ui.cjs && node package-preview.cjs",
-    "test:desktop": "node test/e2e/check-minimal-mode.cjs && node test/e2e/check-release-calendar.cjs && node test/e2e/check-robustness.cjs"
+    "test:desktop": "node test/e2e/check-minimal-mode.cjs && node test/e2e/check-release-calendar.cjs && node test/e2e/check-robustness.cjs && node test/e2e/check-ai-feedback.cjs && node test/e2e/check-school-import.cjs && node test/e2e/check-ai-planning-skill.cjs && node test/e2e/check-updates.cjs && node test/e2e/check-course-planning-scope.cjs"
   },
   "dependencies": {
+    "electron-updater": "6.8.11",
     "lucide": "0.468.0",
     "nodemailer": "10.2.1"
   },
