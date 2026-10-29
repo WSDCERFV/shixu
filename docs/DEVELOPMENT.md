@@ -11,11 +11,17 @@
 ```text
 desktop/
   ui-source.html        界面、交互和本地工作区模型
+  workspace-ui.js       多周总览、模块布局编辑与课表校正交互
+  workspace.css         总览布局与多周界面样式
+  workspace-layout.cjs  布局约束、碰撞避让、模块及功能定义
+  calendar-editing.js   框选、批量编辑、统一撤销及课程并行设置
   main.cjs              Electron 主进程与受限 IPC
   preload.cjs           提供给界面的受限操作
   services.cjs          AI、音频转写、邮件协议与校验
   ai-stream.cjs         SSE 读取、分段超时、取消、完成与有限重试
   planning-engine.cjs   上下文裁剪、空闲时段和确定性冲突避让
+  planning-rhythm.cjs   用餐、休息与下课出行预留及明确作息覆盖
+  notifications.js      主窗口与独立详情窗共用的可拖动操作提示
   planning-skill.cjs    按需加载内置技能及 JSON 合约
   skills/shixu-planner/ 内置规划技能及课表调整规则
   seu-page.cjs          临时学校页面内的表单填入与课表读取
@@ -45,6 +51,8 @@ docs/                   文档、截图及第三方许可
 
 修改 `ui-source.html` 后运行 `npm run prepare-ui` 或 `npm start`。构建结果还包括独立详情窗和离线图标资源，不要只手动修改生成的 `renderer.html`。
 
+`build-ui.cjs` 将 `planner-domain.cjs`、`workspace-layout.cjs`、`workspace-ui.js`、`calendar-editing.js` 和 `workspace.css` 同步嵌入界面片段，避免浏览器片段与桌面代码不一致。修改这些配套文件，保留构建标记；不要手动改标记之间的生成内容。
+
 如需使用另一个明确指定的界面源，可设置绝对 `SHIXU_UI_SOURCE`。默认总是使用仓库内的文件。
 
 ## 测试
@@ -54,6 +62,10 @@ docs/                   文档、截图及第三方许可
 `npm run test:desktop` 在 Windows 打开隔离测试窗口，覆盖极简草案、周计划/独立详情及存储故障恢复。截图和临时记录写入根目录 `.test-artifacts/`，已在忽略规则中排除。测试采用本地模拟模型服务和隔离的学校页面夹具，不会调用你的真实 AI 配置或使用学生账号。新增检查覆盖两种流式协议、取消与失败、模板配置、延迟认证表单、学期名称确认、错学期阻断、整学期预览、技能自动加载及本地冲突阻断。
 
 `check-course-planning-scope.cjs` 用 240 节模拟课程验证未确认和已确认课表、普通排程、越界模型输出、单次调课、导入保存失败及旧对话重启恢复。课程编辑范围在共享的 `planner-domain.cjs` 与主进程中独立计算，远端返回值不能自行扩大授权范围；课表的完整占用仍由本地校验使用。
+
+`check-workspace-customization.cjs` 覆盖旧学期错配的修复预览、写入失败、撤销、固定课程手动解锁、多周跳转、全天显示、功能关闭、计时暂停、布局拖动与缩放、独立模式保存、小窗口及重启恢复。`check-custom-ai-preview.cjs` 用本地模拟服务验证普通自定义总览的 AI 预览和明确调课授权，不使用真实账号、密钥或个人记录。
+
+`check-batch-and-parallel.cjs` 覆盖框选删除、Ctrl+Z、课程并行权限、跨周和预计重复课次的批量操作，以及存储失败回退、文本快捷键隔离、独立详情与重启恢复。课程并行权限由用户设置；模型输出不能更改权限。`FocusDomain.eventsConflict` 与 `isParallelCourse` 同时供渲染器及本地排程使用，避免预览和确认结果不同。
 
 手动开发也应设置绝对 `SHIXU_DATA_DIR`，例如 `%TEMP%\shixu-development`。该变量会隔离全部运行目录，并禁用真实开机启动设置；不要把测试数据复制到发布目录。
 

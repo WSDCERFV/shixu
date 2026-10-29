@@ -5,10 +5,7 @@ const periods = ['08:00-08:45','08:50-09:35','09:50-10:35','10:40-11:25','11:30-
 const semesterMondays={'2026-2027-1':'2026-09-21','2026-2027-2':'2027-02-22'};
 // Live imports identify the semester by the school's label, never by its numeric suffix.
 function semesterMonday(term) {
-  const name=String(term?.name||''),year=name.match(/(20\d{2})\s*[-—–/]\s*(20\d{2})/);
-  if(!year||Number(year[2])!==Number(year[1])+1||/暑|夏|短学期/.test(name))return '';
-  const season=/秋/.test(name)?'1':/春/.test(name)?'2':'';
-  return season?semesterMondays[year[1]+'-'+year[2]+'-'+season]||'':'';
+  return D.seuSemesterMonday(term?.name);
 }
 function normalizeTerms(rows) {
   if(!Array.isArray(rows)||!rows.length||rows.length>300)throw new Error('学校未返回有效的学期列表，请重新登录“我的课表”。');
@@ -36,6 +33,7 @@ function parseSeuCourses(payload, options) {
   }
   if (events.length > 2000) throw new Error('课程次数超过 2000，请分学期抓取。');
   const all=[...new Map(events.map(e=>[e.id,e])).values()],cutoff=options.now===undefined?Date.now():new Date(options.now).getTime();
+  for(const e of all){e.locked=true;e.courseOriginal={date:e.date,start:e.start,end:e.end,firstMonday:options.firstMonday,termName:payload.termName||'',termCode:payload.termCode||''};}
   const upcoming=options.excludeEnded===false?all:all.filter(e=>Date.parse(e.date+'T'+e.end+':00+08:00')>cutoff);
   return {school:'东南大学',termCode:payload.termCode,termName:payload.termName,firstMonday:options.firstMonday,events:upcoming,totalCount:all.length,skippedPast:all.length-upcoming.length,errors};
 }

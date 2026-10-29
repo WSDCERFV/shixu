@@ -79,7 +79,7 @@ async function chat(provider, key, input, options = {}) {
   Object.assign(body, requestTuning(provider));
   const result = await requestAI(endpoint(provider.url, responses ? 'responses' : 'chat/completions'), body, key, options);
   options.onProgress?.({ phase: 'validating', reply: replyPrefix(result.text), reasoning: result.reasoning, reasoningLabel: result.reasoningLabel });
-  const checked = engine.repair(parsePlan(result.text), {...input.context,requestText:String(input.messages?.at(-1)?.content||'')});
+    const checked = engine.repair(parsePlan(result.text), {...input.context,rhythm:prepared.context.rhythm,requestText:String(input.messages?.at(-1)?.content||'')});
   return { ...checked, contextStats: prepared.stats, reasoning: result.reasoning, reasoningLabel: result.reasoningLabel };
 }
 async function transcribe(provider, key, bytes, mime) {

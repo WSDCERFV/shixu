@@ -1,5 +1,7 @@
 const root=document.getElementById('focus-workspace'),$=id=>document.getElementById('fw-'+id);let model=null,dirty=false,inputTimer=0,saving=false;
 const ids=()=>[...root.querySelectorAll('input[id],select[id],textarea[id]')];
+const notices=window.ShixuNotices.create(root);
+root.addEventListener('invalid',()=>notices.show('请检查表单中标出的必填项和输入格式。',true),true);
 function collect(){return {...Object.fromEntries(ids().map(e=>[e.id,e.type==='checkbox'?e.checked:e.value])),__weekdays:[...root.querySelectorAll('[data-routine-weekday]:checked')].map(e=>Number(e.value))};}
 function send(type,extra={}){if(!model)return;clearTimeout(inputTimer);return window.detailBridge.action({type,key:model.key,fields:collect(),...extra});}
 function paint(value){
@@ -18,7 +20,7 @@ function paint(value){
  root.style.colorScheme=value.theme==='auto'?'light dark':value.theme||'dark';root.style.setProperty('--accent-choice',value.accent||'#25b8f2');root.style.setProperty('--accent-light',value.accentLight||'#286f89');$('detail-slot').hidden=false;$('detail-title').textContent=value.title+' · 可拖到桌面任意位置';$('detail-dock').textContent='放回应用';$('detail-detach').hidden=true;
  if(value.texts?.['fw-task-email-default'])$('task-email-default').textContent=value.texts['fw-task-email-default'];
  for(const field of ids())field.disabled=saving||!!value.controls?.[field.id]?.disabled;for(const id of ['task-save','plan-save'])$(id).disabled=saving||!!value.controls?.['fw-'+id]?.disabled;
- const note=$('native-feedback');note.textContent=value.notice||'';note.classList.toggle('error',!!value.error);window.lucide?.createIcons({attrs:{width:16,height:16}});
+ const note=$('native-feedback');note.textContent=value.notice||'';note.classList.toggle('error',!!value.error);if(value.notice)notices.show(value.notice,!!value.error);window.lucide?.createIcons({attrs:{width:16,height:16}});
 }
 window.detailBridge.onData(paint);window.detailBridge.onClose(()=>send('close'));
 root.addEventListener('input',ev=>{if(!model||!ev.target.matches('input,select,textarea'))return;dirty=true;$('native-feedback').textContent='有未保存的修改';send('draft');});
@@ -29,3 +31,5 @@ $('task-save').onclick=save;$('plan-save').onclick=save;for(const id of ['detail
 $('detail-close').onclick=()=>send('close');$('detail-dock').onclick=()=>send('attach');$('task-delete').onclick=()=>send('delete');$('plan-delete').onclick=()=>send('delete');$('task-ai').onclick=()=>send('ai');$('plan-ai').onclick=()=>send('ai');$('task-duration').onclick=()=>send('duration');
 $('task-mail-settings').onclick=()=>send('mail-settings');
 $('feeling-mic').onclick=()=>{const el=$('task-feeling');el.focus();el.setSelectionRange(el.value.length,el.value.length);$('feeling-voice-note').textContent='请按 Win+H 口述心得；填写后点击保存。';};
+
+document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&!ev.shiftKey&&ev.key.toLowerCase()==='z'&&!ev.target.closest('textarea,input:not([type=checkbox]):not([type=radio]),[contenteditable=true]')){ev.preventDefault();send('undo');}});

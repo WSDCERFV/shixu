@@ -144,31 +144,56 @@
     const unique = new Map();
     for (const e of parsed.events) {
       const id = 'course-' + hash([school, e.externalId || e.title, e.date, e.start].join('|'));
-      unique.set(id, { ...e, id, sourceId: id, school, source: 'course-import', priority: 3, state: 'todo', locked: true, tags: ['学习', '课程'], content: e.content || `${e.title}${e.room ? ' · ' + e.room : ''}${e.teacher ? ' · ' + e.teacher : ''}` });
+      unique.set(id, { ...e, id, sourceId: id, school, source: 'course-import', priority: 3, state: 'todo', locked: true, courseOriginal:{date:e.date,start:e.start,end:e.end,firstMonday:options.firstMonday||''}, tags: ['学习', '课程'], content: e.content || `${e.title}${e.room ? ' · ' + e.room : ''}${e.teacher ? ' · ' + e.teacher : ''}` });
     }
     return { events: [...unique.values()], errors: parsed.errors, duplicates: parsed.events.length - unique.size, school };
   }
   const isCourse=e=>e?.source==='course-import';
+  const isParallelCourse=e=>isCourse(e)&&e.courseAllowOverlap===true;
+  const eventsConflict=(a,b)=>!isParallelCourse(a)&&!isParallelCourse(b)&&a.date===b.date&&a.start<b.end&&b.start<a.end;
+  const courseSeriesKey=e=>isCourse(e)?JSON.stringify([e.school||'',e.courseOriginal?.termCode||(/^course-/.test(e.sourceId||'')?'':e.sourceId||''),String(e.title||'').normalize('NFKC').trim(),e.teacher||'']):'';
+  function parallelCourseUpdates(events,event,scope='once',date=''){
+    const old=events.find(e=>e.id===event.id),changed=isCourse(old)&&(scope==='future'||!!old.courseAllowOverlap!==!!event.courseAllowOverlap),key=courseSeriesKey(old||event);
+    return events.map(e=>e.id===event.id?event:changed&&scope==='future'&&isCourse(e)&&courseSeriesKey(e)===key&&e.date>=date?{...e,courseAllowOverlap:!!event.courseAllowOverlap,updated:event.updated}:e);
+  }
   function courseEditScope(text,context={}){
-    const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,''),raw=normalize(text),parts=raw.split(/[，。；;,\n]|其他/),negative=/(?:不要|不用|不需要|无需|不必|别|不许).{0,8}(?:改|动|调|移|删|取消)|不改动|不改|不动|保持(?:原样|不变|原时间)/;
-    const request=parts.filter(p=>!negative.test(p)).join('，'),change=/(?:调课|改期|改到|改成|改为|挪|移到|换到|提前|推迟|延后|取消|删除|停课|修改|调整)/.test(request),items=new Map();
+    const normalize=s=>String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,''),raw=normalize(text),parts=raw.split(/[，。；;,\n]|其他/),negative=/(?:不要|不用|不需要|无需|不必|别|不许|不能|不可|不想|不希望|禁止|不得).{0,8}(?:改|动|调|移|删|取消)|不改动|不改|不动|保持(?:原样|不变|原时间)/;
+    const request=parts.filter(p=>!negative.test(p)).join('，'),change=/(?:调课|调休|换课|改期|改到|改成|改为|挪|移到|换到|提前|推迟|延后|取消|删除|停课|修改|调整)/.test(request),items=new Map();
     for(const e of [...(context.events||[]),...(context.protectedDrafts||[]).map(d=>d.event),...(context.drafts||[]).map(d=>d.event)])if(isCourse(e)&&e.id)items.set(e.id,e);
-    if(!change)return {editableIds:[],allowDelete:false,truncated:false};
-    const source=request.split(/改到|改成|改为|挪到|移到|换到|推迟到|提前到|延后到|调整到/)[0],selected=validDate(context.selectedDate)?context.selectedDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),now=Number.isFinite(Date.parse(context.now))?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(context.now)):selected;
+    if(!change)return {editableIds:[],deletableIds:[],allowDelete:false,truncated:false};
+    const source=request.split(/改到|改成|改为|挪到|移到|换到|调休到|换课到|推迟到|提前到|延后到|调整到/)[0],selected=validDate(context.selectedDate)?context.selectedDate:new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()),now=Number.isFinite(Date.parse(context.now))?new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(context.now)):selected;
     const dates=new Set((source.match(/\d{4}-\d{2}-\d{2}/g)||[]).filter(validDate)),monthDays=[...source.matchAll(/(?:(\d{4})年)?(\d{1,2})月(\d{1,2})[日号]?/g)];
     for(const m of monthDays)for(const e of items.values())if(e.date?.slice(5)===m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')&&(!m[1]||e.date.startsWith(m[1]+'-')))dates.add(e.date);
     for(const [word,offset] of [['今天',0],['明天',1],['后天',2]])if(source.includes(word))dates.add(addDay(now,offset));
     const week=source.match(/(下周|本周|这周|周|星期)([一二三四五六日天])/);if(week){const day='一二三四五六日'.indexOf(week[2]==='天'?'日':week[2])+1;dates.add(addDay(selected,1-weekday(selected)+(week[1]==='下周'?7:0)+day-1));}
-    let candidates=[...items.values()].filter(e=>{const title=normalize(e.title);return title&&(request.includes(title)||request.includes(e.id))&&!parts.some(p=>negative.test(p)&&p.includes(title))&&!new RegExp(title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:的)?(?:复习|学习|作业|练习|预习)').test(request);});
-    if(!candidates.length&&/^(?:请|帮我|把|再)*(?:它|这门课|这节课|这个事件|这个任务|改到|改成|改为|调整到)/.test(request)&&items.has(context.focusedEventId))candidates=[items.get(context.focusedEventId)];
+    let candidates=[...items.values()].filter(e=>{const title=normalize(e.title),clause=parts.find(p=>!negative.test(p)&&(p.includes(title)||p.includes(e.id))&&/(?:调课|调休|换课|改期|改到|改成|改为|挪|移到|换到|提前|推迟|延后|取消|删除|停课|修改|调整)/.test(p)),escaped=title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');return title&&clause&&!parts.some(p=>negative.test(p)&&p.includes(title))&&!new RegExp(escaped+'(?:的)?(?:复习|学习|作业|练习|预习)|(?:复习|学习|预习|自学|练习)(?:一下|一会儿?|的)?'+escaped).test(clause);});
+    const focusedReference=/^(?:请|帮我|把|再)*(?:(?:取消|删除|停课|调课|调休|换课)(?:一下)?)?(?:它|这门课|这节课|这个事件|这个任务|改到|改成|改为|调整到)/;
+    if(!candidates.length&&focusedReference.test(request)&&items.has(context.focusedEventId))candidates=[items.get(context.focusedEventId)];
     if(dates.size)candidates=candidates.filter(e=>dates.has(e.date));
     else if(!candidates.some(e=>{const title=normalize(e.title),at=source.indexOf(title);return /(?:每周|整学期|整个学期|所有|全部)(?:的)?$/.test(source.slice(Math.max(0,at-8),at));})){const days=[...new Set(candidates.map(e=>e.date).filter(validDate))].sort(),chosen=days.find(d=>d===selected)||days.find(d=>d>=selected);candidates=candidates.filter(e=>e.date===chosen);}
-    return {editableIds:candidates.slice(0,30).map(e=>e.id),allowDelete:/(?:取消|删除|停课)/.test(request),truncated:candidates.length>30};
+    const editableIds=candidates.slice(0,30).map(e=>e.id),deletableIds=candidates.slice(0,30).filter(e=>parts.some(p=>!negative.test(p)&&/(?:取消|删除|停课)/.test(p)&&(p.includes(normalize(e.title))||p.includes(e.id)||(e.id===context.focusedEventId&&focusedReference.test(p))))).map(e=>e.id);
+    return {editableIds,deletableIds,allowDelete:!!deletableIds.length,truncated:candidates.length>30};
   }
   function cleanConfirmedCourseDrafts(drafts,events,confirmed,applied){
     if(!confirmed)return drafts;const saved=new Map(events.map(e=>[e.id,e])),fields=['date','title','start','end','priority','tags','content','state','planId'];
     return drafts.flatMap(d=>{const old=saved.get(d.event?.id);if(!isCourse(old))return [d];if(applied||fields.every(k=>JSON.stringify(d.event[k]??'')===JSON.stringify(old[k]??'')))return [];if(!d.before&&!d.manual?.length)return [];return [{...d,before:d.before||JSON.parse(JSON.stringify(old)),action:d.action==='delete'?'delete':'update',...(!d.courseAuthorized&&!d.manual?.length?{selected:false,assumption:'旧版遗留的课程建议已取消勾选；请重新指定调课要求，或手动核对后再勾选。'}:{})}];});
   }
-  const api = { validDate, validTime, addDay, weekday, hash, normalizePlan, routineEvents, parseCourses, parseWeeks, isCourse, courseEditScope, cleanConfirmedCourseDrafts };
+  // Semester codes are opaque school identifiers; only a verified label or an explicit calendar date establishes the week origin.
+  function seuSemesterMonday(name){const year=String(name||'').match(/(20\d{2})\s*[-—–/]\s*(20\d{2})/);if(!year||Number(year[2])!==Number(year[1])+1||/暑|夏|短学期/.test(name))return '';const key=year[1]+'-'+year[2]+(/秋/.test(name)?'-1':/春/.test(name)?'-2':'');return {'2026-2027-1':'2026-09-21','2026-2027-2':'2027-02-22'}[key]||'';}
+  function courseCalendarAudit(events,caches){
+    const issues=[];
+    for(const cache of caches||[]){if(cache.school!=='东南大学')continue;const expected=validDate(cache.firstMonday)?cache.firstMonday:seuSemesterMonday(cache.termName);if(!expected)continue;
+      const groups=new Map();for(const e of events){if(!isCourse(e)||e.school!==cache.school||(cache.termCode&&e.sourceId!==cache.termCode)||!validDate(e.date)||!Number.isInteger(e.teachingWeek)||e.teachingWeek<1||e.courseAdjusted)continue;const inferred=addDay(e.date,-((e.teachingWeek-1)*7+weekday(e.date)-1));if(inferred===expected)continue;const ids=groups.get(inferred)||[];ids.push(e.id);groups.set(inferred,ids);}
+      // A single deliberate date change is not evidence of a semester-wide import error.
+      for(const [actual,ids] of groups)if(ids.length>=3&&Math.abs(Date.parse(actual)-Date.parse(expected))>=28*86400000)issues.push({school:cache.school,termName:cache.termName||'',termCode:cache.termCode||'',actual,expected,ids});
+    }return issues;
+  }
+  function courseCalendarRepair(events,issue){
+    if(!issue||!validDate(issue.actual)||!validDate(issue.expected)||weekday(issue.expected)!==1)throw new Error('请先核对学期与第一教学周周一。');const ids=new Set(issue.ids),delta=Math.round((Date.parse(issue.expected)-Date.parse(issue.actual))/86400000);
+    return events.filter(e=>ids.has(e.id)&&isCourse(e)&&!e.courseAdjusted).map(e=>({...e,date:addDay(e.date,delta),locked:true,courseOriginal:{date:addDay(e.date,delta),start:e.start,end:e.end,firstMonday:issue.expected,termName:issue.termName,termCode:issue.termCode}}));
+  }
+  function courseSessionKey(e){return JSON.stringify([e.school||'',e.title,e.date,e.start,e.end,e.room||'',e.teacher||'']);}
+  function newCourseSessions(events,candidates){const ids=new Set(events.map(e=>e.id)),keys=new Set(events.filter(isCourse).map(courseSessionKey));return candidates.filter(e=>{const key=courseSessionKey(e);if(ids.has(e.id)||keys.has(key))return false;ids.add(e.id);keys.add(key);return true;});}
+  const api = { validDate, validTime, addDay, weekday, hash, normalizePlan, routineEvents, parseCourses, parseWeeks, isCourse, isParallelCourse, eventsConflict, courseSeriesKey, parallelCourseUpdates, courseEditScope, cleanConfirmedCourseDrafts, seuSemesterMonday, courseCalendarAudit, courseCalendarRepair, courseSessionKey, newCourseSessions };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else global.FocusDomain = api;
 })(typeof window === 'undefined' ? globalThis : window);

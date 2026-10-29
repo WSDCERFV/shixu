@@ -1,0 +1,202 @@
+/* Editable overview, multiweek navigation and a fitted weekly calendar. */
+#focus-workspace [hidden]{display:none!important}
+#focus-workspace .workspace-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+#focus-workspace .workspace-toolbar label{margin:0;max-width:210px}
+#focus-workspace:not(.dashboard-custom):not(.narrow)[data-view=overview] .board{grid-template-columns:var(--enabled-board-columns,minmax(0,var(--today-width,30%)) minmax(0,1fr) 184px)!important}
+#focus-workspace #fw-allplans-page{container-type:inline-size;padding:18px 22px;--mini-course:light-dark(#1683a7,#247b9b)}
+#focus-workspace .allplans-heading{display:flex;align-items:center;gap:12px;margin:0 0 16px}
+#focus-workspace .allplans-symbol{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:14px;color:var(--accent);background:var(--glass);flex-shrink:0}
+#focus-workspace .allplans-symbol svg{width:23px;height:23px}
+#focus-workspace .allplans-heading h3{font-size:21px;font-weight:600;letter-spacing:.03em;margin:0 0 4px}
+#focus-workspace .allplans-heading p{font-size:12px;line-height:1.6;color:var(--muted);margin:0}
+#focus-workspace .allplans-controls{display:flex;align-items:end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;padding:12px 16px;background:var(--glass);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(12px)}
+#focus-workspace #fw-multiweek-batch-slot{flex-basis:100%;min-width:0}
+#focus-workspace #fw-multiweek-batch-slot .batch-toolbar{position:static;z-index:auto;margin:0;padding:10px 0 0;gap:8px 12px;border:0;border-top:1px solid color-mix(in srgb,var(--line) 65%,transparent);border-radius:0;background:transparent;backdrop-filter:none}
+#focus-workspace #fw-multiweek-batch-slot .batch-toolbar>span{font-size:10px;line-height:1.6}
+#focus-workspace #fw-multiweek-batch-slot .batch-toolbar .row{flex-wrap:wrap}
+#focus-workspace .multiweek-navigation,#focus-workspace .multiweek-options{display:flex;align-items:end;gap:12px;flex-wrap:wrap;min-width:0}
+#focus-workspace .allplans-controls label{display:flex;flex-direction:column;gap:7px;margin:0;font-size:11px;color:var(--muted);min-width:0}
+#focus-workspace .allplans-controls input,#focus-workspace .allplans-controls select{margin:0;height:36px;font-size:12px;color:var(--ink);border-radius:8px;background:light-dark(rgb(255 255 255/.65),rgb(7 23 38/.5))}
+#focus-workspace #fw-multiweek-date{width:150px;padding:6px 10px}
+#focus-workspace .allplans-controls select{min-width:76px;padding:6px 24px 6px 10px}
+#focus-workspace .multiweek-step{display:flex;align-items:center;gap:4px;height:36px}
+#focus-workspace .multiweek-step button{display:flex;align-items:center;justify-content:center;gap:0;height:36px;min-width:34px;padding:7px 9px;font-size:12px;border-radius:8px;background:transparent}
+#focus-workspace #fw-multiweek-today{padding-inline:14px}
+#focus-workspace .multiweek-step svg{width:16px;height:16px}
+#focus-workspace .multiweek-size-label{width:152px}
+#focus-workspace .multiweek-size-label>span{display:flex;justify-content:space-between;gap:8px}
+#focus-workspace .multiweek-size-label output{font-variant-numeric:tabular-nums}
+#focus-workspace #fw-multiweek-size{width:100%;min-width:0;padding:0;background:transparent;accent-color:var(--accent);cursor:ew-resize}
+#focus-workspace .multiweek-summary{display:flex;align-items:center;justify-content:space-between;gap:10px 20px;flex-wrap:wrap;margin:18px 0 10px;font-variant-numeric:tabular-nums}
+#focus-workspace .multiweek-range{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 12px}
+#focus-workspace .multiweek-range strong{font-size:14px;font-weight:600}
+#focus-workspace .multiweek-range>span{font-size:11px;color:var(--muted)}
+#focus-workspace .multiweek-totals{display:flex;align-items:center;gap:14px;font-size:11px;color:var(--muted)}
+#focus-workspace .multiweek-totals b{font-size:14px;color:var(--ink);font-weight:600}
+#focus-workspace .multiweek-help{display:flex;justify-content:space-between;align-items:center;gap:8px 18px;flex-wrap:wrap;color:var(--muted);font-size:11px;margin:0 0 16px}
+#focus-workspace .multiweek-help>span{display:inline-flex;gap:6px;align-items:center}
+#focus-workspace .mini-course-key{display:inline-block;width:13px;height:11px;border-radius:3px;background:var(--mini-course);border-left:2px solid #fff}
+/* The column selector is a maximum; never squeeze seven days into a narrow card. */
+#focus-workspace .multiweek-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(320px,calc((100% - (var(--multiweek-columns,3) - 1)*16px)/var(--multiweek-columns,3)))),1fr));gap:16px;align-items:start}
+#focus-workspace .mini-week{display:flex;flex-direction:column;gap:0;min-width:0;width:100%;text-align:left;padding:16px;background:var(--glass);border:1px solid color-mix(in srgb,var(--line) 85%,transparent);border-radius:14px;color:var(--ink);backdrop-filter:blur(12px);box-shadow:0 3px 14px light-dark(rgb(27 54 72/.04),rgb(0 0 0/.06));overflow:hidden}
+#focus-workspace .mini-week:hover{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--glass);box-shadow:0 6px 20px light-dark(rgb(27 54 72/.09),rgb(0 0 0/.14))}
+#focus-workspace .mini-week[aria-current=true]{border-color:color-mix(in srgb,var(--accent) 65%,var(--line))}
+#focus-workspace .mini-week:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+#focus-workspace .mini-week-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+#focus-workspace .mini-week-heading{display:flex;flex-direction:column;gap:4px;min-width:0}
+#focus-workspace .mini-week-date{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.015em}
+#focus-workspace .mini-week-date>span{font-weight:400;color:var(--muted);padding:0 3px}
+#focus-workspace .mini-week-subtitle{display:flex;align-items:center;gap:8px;font-size:10px;min-height:20px;color:var(--muted)}
+#focus-workspace .mini-week-badge{font-size:10px;line-height:18px;padding:0 6px;border-radius:5px;color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+#focus-workspace .mini-week-count{display:inline-flex;align-items:baseline;gap:3px;flex-shrink:0;font-size:18px;font-weight:600;padding:4px 9px;border-radius:9px;background:light-dark(rgb(28 76 102/.05),rgb(167 205 230/.06));font-variant-numeric:tabular-nums}
+#focus-workspace .mini-week small{font-size:10px;font-weight:400;color:var(--muted)}
+#focus-workspace .mini-week-calendar{display:grid;grid-template-columns:33px minmax(0,1fr);grid-template-rows:auto auto;gap:9px 0}
+#focus-workspace .mini-week-axis-head{align-self:center;color:var(--muted);font-size:9px}
+#focus-workspace .mini-week-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;text-align:center}
+#focus-workspace .mini-week-days>span{display:flex;flex-direction:column;align-items:center;gap:3px;padding:3px 0;border-radius:7px;color:var(--muted)}
+#focus-workspace .mini-week-days>span>span{font-size:9px;line-height:1.3}
+#focus-workspace .mini-week-days b{font-size:12px;font-weight:500;line-height:18px;font-variant-numeric:tabular-nums;color:var(--ink)}
+#focus-workspace .mini-week-days .weekend b{color:var(--muted)}
+#focus-workspace .mini-week-days .is-today{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+#focus-workspace .mini-week-days .is-today b{color:var(--accent);font-weight:600}
+#focus-workspace .mini-week-axis{position:relative;height:var(--multiweek-height,200px);font-variant-numeric:tabular-nums}
+#focus-workspace .mini-week-axis>span{position:absolute;left:0;transform:translateY(-50%);font-size:9px;line-height:1;color:var(--muted)}
+#focus-workspace .mini-week-axis>span.first{transform:none}
+#focus-workspace .mini-week-axis>span.last{transform:translateY(-100%)}
+#focus-workspace .mini-week-plot{position:relative;height:var(--multiweek-height,200px);display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;border-radius:6px;background:light-dark(rgb(22 65 91/.025),rgb(4 18 29/.12));isolation:isolate}
+#focus-workspace .mini-week-line{position:absolute;left:0;right:0;height:1px;background:var(--line);opacity:.5;pointer-events:none}
+#focus-workspace .mini-week-day{position:relative;min-width:0;border-left:1px solid color-mix(in srgb,var(--line) 24%,transparent)}
+#focus-workspace .mini-week-day.weekend{background:light-dark(rgb(31 72 98/.025),rgb(162 201 231/.025))}
+#focus-workspace .mini-week-day.is-today{background:color-mix(in srgb,var(--accent) 4%,transparent)}
+#focus-workspace .mini-event{position:absolute;display:block;border-radius:4px;min-height:3px;background:var(--event-fill);overflow:hidden;color:#fff;padding:0 3px;box-sizing:border-box;border:0;box-shadow:0 1px 2px rgb(0 0 0/.07)}
+#focus-workspace .mini-event.course{background:var(--mini-course);border-left:2px solid rgb(255 255 255/.85);padding-left:2px}
+#focus-workspace .mini-event.parallel-course{border-left-style:dashed}
+#focus-workspace .mini-event.is-done{opacity:.6}
+#focus-workspace .mini-event-label{display:block;font-size:10px;font-weight:500;line-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#focus-workspace .mini-event-short .mini-event-label{visibility:hidden}
+#focus-workspace .mini-event:hover{filter:brightness(1.15);z-index:2}
+#focus-workspace .mini-week-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:var(--muted);font-size:11px}
+#focus-workspace .mini-week-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid color-mix(in srgb,var(--line) 65%,transparent);margin-top:16px;padding-top:12px;min-width:0}
+#focus-workspace .mini-week-completion{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
+#focus-workspace .mini-week-progress{display:block;width:32px;height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+#focus-workspace .mini-week-progress>span{display:block;height:100%;background:var(--accent);border-radius:3px}
+#focus-workspace .mini-week-open{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--muted);white-space:nowrap}
+#focus-workspace .mini-week-open svg{width:13px;height:13px}
+#focus-workspace .mini-week:hover .mini-week-open{color:var(--accent)}
+#focus-workspace .multiweek-footnote{margin:16px 0 2px;color:var(--muted);font-size:11px;line-height:1.7}
+@container(max-width:600px){#focus-workspace .allplans-controls{align-items:stretch;padding:14px;gap:14px}#focus-workspace .multiweek-navigation,#focus-workspace .multiweek-options{width:100%;justify-content:space-between}#focus-workspace .multiweek-options{gap:10px}#focus-workspace .multiweek-size-label{flex:1;min-width:100px;max-width:190px}#focus-workspace .multiweek-summary{margin-top:18px}#focus-workspace .multiweek-totals{width:100%;gap:18px}}
+@container(max-width:360px){#focus-workspace .multiweek-size-label{flex-basis:100%;max-width:none}#focus-workspace .mini-week{padding:12px}#focus-workspace .mini-week-progress{display:none}#focus-workspace .multiweek-help{line-height:1.7}}
+#focus-workspace .feature-switches{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px 12px;margin-top:10px}
+#focus-workspace .layout-settings{grid-column:1/-1}
+#focus-workspace .layout-editor{display:grid;grid-template-columns:minmax(0,1fr) 235px;gap:16px;margin-top:14px}
+#focus-workspace .layout-preview-scroll{max-height:560px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:color-mix(in srgb,var(--bg) 80%,transparent);padding:6px}
+#focus-workspace .layout-canvas{position:relative;min-height:350px;background:repeating-linear-gradient(to right,transparent 0 calc(8.333333% - 1px),var(--line) calc(8.333333% - 1px) 8.333333%);touch-action:none}
+#focus-workspace .layout-item{position:absolute;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;background:var(--panel);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#focus-workspace .layout-item[aria-selected=true]{border:2px solid var(--accent)}
+#focus-workspace .layout-item-head{display:flex;align-items:center;gap:5px;padding:7px;cursor:move;touch-action:none;background:var(--soft);font-size:var(--xs)}
+#focus-workspace .layout-item-head>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#focus-workspace .layout-item-head svg{width:14px;height:14px;flex-shrink:0}
+#focus-workspace .layout-item-head button{padding:0 3px;font-size:14px;border:0;background:transparent}
+#focus-workspace .layout-item-sample{padding:9px;font-size:var(--xs);color:var(--muted);line-height:1.8;pointer-events:none;overflow:hidden}
+#focus-workspace .layout-item-sample::after{content:'';display:block;height:80px;margin-top:10px;border-radius:5px;background:repeating-linear-gradient(to bottom,var(--soft) 0 8px,transparent 8px 18px);opacity:.7}
+#focus-workspace .layout-size-grip{position:absolute;right:0;bottom:0;padding:3px 5px;cursor:nwse-resize;background:var(--soft);color:var(--accent);border:0;border-radius:7px 0;touch-action:none}
+#focus-workspace .module-palette{display:flex;flex-direction:column;gap:7px}
+#focus-workspace .module-palette button{display:flex;align-items:center;gap:8px;text-align:left;padding:9px}
+#focus-workspace .module-palette svg{width:16px;height:16px;flex-shrink:0}
+#focus-workspace .layout-fieldset{border:0;padding:0;margin-top:16px;min-width:0}
+#focus-workspace .layout-fieldset .pair{gap:8px}
+#focus-workspace .layout-note{font-size:var(--xs);color:var(--muted);line-height:1.7;margin:9px 0}
+#focus-workspace.dashboard-custom[data-view=overview] .board{display:grid!important;grid-template-columns:repeat(12,minmax(0,1fr))!important;grid-auto-rows:40px;gap:12px!important;align-items:stretch}
+#focus-workspace.dashboard-custom[data-view=overview] .board>[data-dash-module]{height:auto!important;min-width:0;min-height:0;margin:0!important;overflow:auto;box-sizing:border-box}
+#focus-workspace.dashboard-custom[data-view=overview] .board>.today-panel,#focus-workspace.dashboard-custom[data-view=overview] .board>.week-panel{overflow:hidden;display:flex!important}
+#focus-workspace.dashboard-custom[data-view=overview] .board>#fw-stats{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-content:start}
+#focus-workspace.dashboard-custom[data-view=overview] .board>.dash-chat{display:flex;flex-direction:column;gap:10px;background:var(--glass)}
+#focus-workspace .dash-chat .composer{display:flex;flex-direction:column;min-height:0;flex:1;gap:8px}
+#focus-workspace .dash-chat #fw-chat-log{flex:1;min-height:90px;max-height:none;overflow:auto;margin:0}
+#focus-workspace .dash-chat #fw-ai-input{min-height:65px;height:80px;resize:vertical;margin:0}
+#focus-workspace .dash-chat #fw-minimal-history{display:block}
+#focus-workspace .dash-chat .ai-mode,#focus-workspace .dash-chat .chat-heading-edit{display:none}
+#focus-workspace .dash-chat .panel-head{flex-wrap:wrap;gap:6px;margin:0}
+#focus-workspace .dash-chat .panel-head h3{margin-right:auto}
+#focus-workspace .dash-plans .plan-card-grid{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+#focus-workspace .dash-shortcut{display:flex;flex-direction:column;gap:12px;justify-content:center}
+#focus-workspace .dash-shortcut h3{display:flex;gap:8px;align-items:center}
+#focus-workspace .dash-shortcut svg{width:21px;height:21px;color:var(--accent)}
+#focus-workspace .dashboard-empty{grid-column:1/-1;padding:30px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+#focus-workspace .course-integrity-warning{padding:10px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--soft);border-bottom:1px solid var(--p2);flex-shrink:0;font-size:var(--xs)}
+#focus-workspace .course-integrity-warning>span{flex:1;min-width:180px}
+#focus-workspace .integrity-item{margin:12px 0;padding:12px;border:1px solid var(--line);border-radius:8px;line-height:1.8}
+#focus-workspace .course-repair-card{width:min(800px,calc(100% - 20px));background:var(--panel);padding:20px;backdrop-filter:blur(16px)}
+#focus-workspace .course-repair-card .table-wrap{max-height:340px;overflow:auto;margin:12px 0}
+#focus-workspace.week-fit:not(.narrow):not(.compact-week) .week-scroll{overflow-y:hidden}
+#focus-workspace.week-fit .calendar-controls input:disabled{opacity:.4}
+#focus-workspace.dashboard-custom.ai-previewing .event:not(.ai-proposal){opacity:.28!important}
+#focus-workspace.dashboard-custom .ai-proposal{z-index:4;min-height:20px}
+#focus-workspace.dashboard-custom .ai-proposal .event-body{background:var(--event-fill);color:#fff;border:1px solid color-mix(in srgb,var(--priority) 80%,white);padding:4px;display:flex;flex-direction:column;gap:2px}
+#focus-workspace.dashboard-custom .ai-proposal .event-handle{display:block;opacity:.7}
+#focus-workspace.content-small .layout-editor{grid-template-columns:1fr}
+#focus-workspace.content-small .module-palette{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+#focus-workspace.dashboard-custom.narrow[data-view=overview] .board{grid-template-columns:1fr!important;grid-auto-rows:auto}
+#focus-workspace.dashboard-custom.narrow[data-view=overview] .board>[data-dash-module]{grid-column:1!important;grid-row:auto!important;height:var(--dash-height,500px)!important}
+#focus-workspace.dashboard-custom.narrow[data-view=overview] .board>.week-panel{height:auto!important;min-height:400px}
+#focus-workspace.dashboard-custom.content-medium[data-view=overview] .board,#focus-workspace.dashboard-custom.content-small[data-view=overview] .board{grid-template-columns:1fr!important;grid-auto-rows:auto}
+#focus-workspace.dashboard-custom.content-medium[data-view=overview] .board>[data-dash-module],#focus-workspace.dashboard-custom.content-small[data-view=overview] .board>[data-dash-module]{grid-column:1!important;grid-row:auto!important;height:var(--dash-height,500px)!important}
+#focus-workspace.dashboard-custom[data-view=overview] .board>[hidden],#focus-workspace [data-feature-hidden=true]{display:none!important}
+#focus-workspace .batch-toolbar{position:sticky;top:8px;z-index:60;backdrop-filter:blur(14px);margin:10px 12px;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border:1px solid var(--line);border-radius:9px;background:var(--glass);font-size:var(--xs)}
+#focus-workspace .batch-toolbar>span{color:var(--muted)}
+#focus-workspace .batch-toolbar button{padding:5px 8px}
+#focus-workspace .selection-hint{margin:6px 14px 0;color:var(--muted);font-size:10px;line-height:1.7}
+#focus-workspace #fw-batch-delete:not(:disabled){color:var(--p1);border-color:color-mix(in srgb,var(--p1) 50%,var(--line))}
+#focus-workspace .selection-box{position:absolute;z-index:390;pointer-events:none;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent);border-radius:3px}
+#focus-workspace.batch-selecting .calendar,#focus-workspace.batch-selecting #fw-agenda,#focus-workspace.batch-selecting #fw-multiweek-grid{cursor:crosshair;user-select:none;touch-action:none}
+#focus-workspace.batch-selecting .event-body,#focus-workspace.batch-selecting .task-open,#focus-workspace.batch-selecting .mini-week{cursor:crosshair}
+#focus-workspace .event.batch-selected .event-body{box-shadow:inset 0 0 0 2px var(--event-ink),0 0 0 2px var(--accent);filter:brightness(1.06)}
+#focus-workspace .task-row.batch-selected .task-card{outline:2px solid var(--accent);outline-offset:-2px}
+#focus-workspace .mini-event.batch-selected{outline:2px solid var(--accent);outline-offset:1px;z-index:3}
+#focus-workspace .parallel-course .event-body{border-left-style:dashed}
+#focus-workspace .parallel-badge{display:inline-flex;align-items:center;gap:3px;border-radius:4px;padding:1px 4px;background:var(--soft);color:var(--accent);font-size:var(--xs)}
+#focus-workspace .course-parallel{margin:10px 0;padding:10px;background:var(--soft);border-radius:7px}
+#focus-workspace .course-parallel .check{color:var(--ink)}
+#focus-workspace .course-parallel select{margin-bottom:6px}
+#focus-workspace .course-parallel-manager{margin-top:16px;padding:20px}
+#focus-workspace .course-parallel-manager h3{display:flex;align-items:center;gap:8px}
+#focus-workspace .course-parallel-manager h3 svg{color:var(--accent);width:20px;height:20px}
+#focus-workspace .parallel-manager-explanation{color:var(--muted);font-size:12px;line-height:1.9;margin:10px 0 16px;max-width:850px}
+#focus-workspace .parallel-manager-controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#focus-workspace .parallel-manager-controls>label:first-child{flex:1;max-width:430px;min-width:170px}
+#focus-workspace .parallel-manager-controls input[type=search]{margin-top:5px}
+#focus-workspace .parallel-manager-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:16px;align-items:start}
+#focus-workspace .parallel-manager-card{padding:16px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--glass) 75%,transparent);min-width:0}
+#focus-workspace .parallel-manager-heading{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+#focus-workspace .parallel-manager-heading>div{flex:1;min-width:120px}
+#focus-workspace .parallel-manager-heading h4{font-size:14px;font-weight:600;line-height:1.5;margin:0;overflow-wrap:anywhere}
+#focus-workspace .parallel-manager-heading p{font-size:10px;color:var(--muted);margin:4px 0 0}
+#focus-workspace .parallel-manager-icon{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--soft);color:var(--accent);flex-shrink:0}
+#focus-workspace .course-mode-badge{border-radius:5px;padding:3px 6px;background:color-mix(in srgb,var(--muted) 10%,transparent);font-size:10px;color:var(--muted);white-space:nowrap}
+#focus-workspace .course-mode-badge.allows-parallel{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+#focus-workspace .parallel-manager-count{font-size:11px;color:var(--muted);line-height:1.8;margin:12px 0}
+#focus-workspace .parallel-manager-card .row{flex-wrap:wrap}
+#focus-workspace .parallel-manager-card button{font-size:11px;white-space:normal}
+#focus-workspace .parallel-manager-card details{margin-top:14px;padding-top:10px;border-top:1px solid var(--line)}
+#focus-workspace .parallel-manager-card summary{font-size:11px;cursor:pointer;color:var(--accent)}
+#focus-workspace .parallel-manager-sessions{max-height:235px;overflow:auto;margin-top:8px;scrollbar-gutter:stable}
+#focus-workspace .parallel-manager-sessions>label{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;margin:0;border-bottom:1px solid color-mix(in srgb,var(--line) 65%,transparent);font-size:11px}
+#focus-workspace .parallel-manager-sessions>label>span:first-child{display:flex;flex-direction:column;gap:3px;min-width:0}
+#focus-workspace .parallel-manager-sessions b{font-weight:500;font-variant-numeric:tabular-nums}
+#focus-workspace .parallel-manager-sessions>label>span>span{font-size:10px;color:var(--muted);overflow-wrap:anywhere}
+#focus-workspace .parallel-session-check{display:flex;align-items:center;gap:4px;white-space:nowrap}
+#focus-workspace .parallel-session-check input{margin:0}
+#focus-workspace .parallel-manager-empty{grid-column:1/-1;padding:28px 16px;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:10px}
+#focus-workspace .app-notifications{position:absolute;z-index:700;width:min(368px,calc(100% - 20px));max-height:calc(100% - 24px);display:flex;flex-direction:column;border:1px solid light-dark(#c5d7e3,#436078);border-radius:14px;background:light-dark(rgb(250 252 253/.98),rgb(15 34 52/.98));box-shadow:0 12px 42px light-dark(rgb(24 52 74/.2),rgb(0 0 0/.45));backdrop-filter:blur(20px);color:var(--ink);overflow:hidden}
+#focus-workspace .notice-head{display:flex;align-items:center;gap:6px;padding:10px 12px;background:color-mix(in srgb,var(--accent) 7%,transparent);border-bottom:1px solid var(--line);cursor:move;touch-action:none;user-select:none}
+#focus-workspace .notice-head>strong{font-size:12px;font-weight:600;flex:1}
+#focus-workspace .notice-head>button{background:transparent;border:0;padding:0;width:25px;height:25px;font-size:20px;line-height:1;color:var(--muted)}
+#focus-workspace .notice-head>.notice-grip{cursor:move;font-size:22px;touch-action:none}
+#focus-workspace .notice-list{overflow:auto;max-height:min(340px,55vh);padding:4px 12px;overscroll-behavior:contain}
+#focus-workspace .app-notice{display:grid;grid-template-columns:26px minmax(0,1fr) 24px;gap:9px;padding:12px 0;border-bottom:1px solid var(--line);--notice-color:light-dark(#18785f,#6fe5bd)}
+#focus-workspace .app-notice:last-child{border-bottom:0}
+#focus-workspace .app-notice.notice-error{--notice-color:light-dark(#be315f,#ff9ab8)}
+#focus-workspace .notice-icon{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid color-mix(in srgb,var(--notice-color) 60%,transparent);border-radius:9px;background:color-mix(in srgb,var(--notice-color) 10%,transparent);color:var(--notice-color);font-size:16px;font-weight:600}
+#focus-workspace .app-notice strong{display:block;color:var(--notice-color);font-size:12px;font-weight:600;margin-bottom:5px}
+#focus-workspace .app-notice p{font-size:12px;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+#focus-workspace .app-notice>button{align-self:start;width:24px;height:24px;font-size:18px;padding:0;background:transparent;border:0;color:var(--muted)}

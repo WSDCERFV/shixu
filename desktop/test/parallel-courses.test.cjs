@@ -1,0 +1,20 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),D=require('../planner-domain.cjs'),E=require('../planning-engine.cjs');
+const date='2030-10-28',course={id:'c',source:'course-import',sourceId:'term',school:'学校',teacher:'教师',title:'选修课',date,start:'08:00',end:'10:00',locked:true},task={id:'',action:'add',title:'英语练习',date,start:'08:00',end:'09:00',priority:3,content:'先回顾知识，再完成练习，记录错题。',tags:['学习'],assumption:'使用可用时间',planId:'',schedule:{flexible:true,earliest:'08:00',latest:'12:00'}},context={events:[course],plans:[],selectedDate:date,now:'2030-10-27T20:00:00+08:00',requestText:'安排英语练习'};
+test('only explicitly marked imported courses release time; two ordinary tasks still conflict',()=>{
+ assert.equal(D.eventsConflict(course,task),true);assert.equal(D.eventsConflict({...course,courseAllowOverlap:true},task),false);assert.equal(D.eventsConflict(task,{...task,id:'other'}),true);assert.equal(D.isParallelCourse({...task,courseAllowOverlap:true}),false);
+ const slots=E.freeSlots([{...course,courseAllowOverlap:true},{...task,id:'fixed',start:'09:00',end:'10:00'}],date,'08:00','11:00');assert.deepEqual(slots.map(s=>[s.start,s.end]),[['08:00','09:00'],['10:00','11:00']]);
+});
+test('AI occupancy and local repair agree about water classes without moving or duplicating a course',()=>{
+ const water={...context,events:[{...course,courseAllowOverlap:true}]},prepared=E.prepare({context:water,messages:[{role:'user',content:'安排英语练习'}]});assert.equal(prepared.context.events[0].allowsParallel,true);assert.equal(prepared.context.events[0].readOnly,true);assert.ok(prepared.context.freeSlots.some(s=>s.start<='08:00'&&s.end>='10:00'));
+ const ordinary=E.repair({reply:'建议',tasks:[task],plans:[]},context);assert.equal(ordinary.tasks[0].start,'10:15');const allowed=E.repair({reply:'建议',tasks:[task],plans:[]},water);assert.equal(allowed.tasks[0].start,'08:00');assert.equal(allowed.planning.issues.length,0);assert.equal(water.events[0].start,'08:00');
+ const crowded=E.repair({reply:'建议',tasks:[task],plans:[]},{...water,events:[...water.events,{...task,id:'existing',source:'manual'}]});assert.equal(crowded.tasks[0].start,'09:00');
+});
+test('a model cannot mark an ordinary task or fixed course as parallel to suppress a real conflict',()=>{
+ const attempted={...task,courseAllowOverlap:true,schedule:{...task.schedule,flexible:false}},checked=E.repair({reply:'建议',tasks:[attempted],plans:[]},context);assert.ok(checked.planning.issues.length);assert.equal(checked.tasks[0].courseAllowOverlap,undefined);
+ const update={...task,id:course.id,action:'update',title:course.title,start:'10:00',end:'11:00',courseAllowOverlap:true};const fixed=E.repair({reply:'调课',tasks:[update],plans:[]},{...context,requestText:'把2030-10-28的选修课改到10点'});assert.equal(fixed.tasks[0].courseAllowOverlap,false);
+});
+test('applying a parallel rule to later occurrences preserves other courses, old dates and original metadata',()=>{
+ const items=[{...course,id:'past',date:'2030-10-21'},{...course},{...course,id:'next',date:'2030-11-04'},{...course,id:'different',title:'另一门课'},{...course,id:'other-term',sourceId:'other'}],updated={...course,courseAllowOverlap:true,updated:'now'},original=JSON.stringify(items),next=D.parallelCourseUpdates(items,updated,'future',date);
+ assert.equal(next[0].courseAllowOverlap,undefined);assert.equal(next[1].courseAllowOverlap,true);assert.equal(next[2].courseAllowOverlap,true);assert.equal(next[2].start,course.start);assert.equal(next[3].courseAllowOverlap,undefined);assert.equal(next[4].courseAllowOverlap,undefined);assert.equal(JSON.stringify(items),original);assert.equal(D.parallelCourseUpdates(items,updated,'once',date)[2].courseAllowOverlap,undefined);
+ const already=[...items];already[1]={...course,courseAllowOverlap:true};assert.equal(D.parallelCourseUpdates(already,updated,'future',date)[2].courseAllowOverlap,true,'a course already marked for one date can still apply its flag to later occurrences');assert.equal(D.parallelCourseUpdates(items,{...updated,title:'本次改名'},'future',date)[2].courseAllowOverlap,true,'scope follows the original course series when this occurrence is renamed');
+});

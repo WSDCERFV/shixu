@@ -8,15 +8,17 @@
 
 ## 下载与安装
 
-当前版本：**[0.8.5](https://github.com/WSDCERFV/shixu/releases/tag/v0.8.5)**。支持 **Windows 10 / 11，x64**；其他系统尚未验证。新版包含 0.8.1–0.8.4 开发版本的改进，完整记录见 [CHANGELOG](CHANGELOG.md)。
+当前版本：**[0.9.3](https://github.com/WSDCERFV/shixu/releases/tag/v0.9.3)**。支持 **Windows 10 / 11，x64**；其他系统尚未验证。新版包含此前未单独公开的 0.9.0–0.9.2 开发版本改进，完整记录见 [CHANGELOG](CHANGELOG.md)。
+
+本版新增多周计划总览、全天完整显示、功能开关、可拖动缩放的总览模块、旧课表日期校验与修复预览，以及直接框选、批量编辑和 Ctrl+Z 撤销。水课可在课表导入中集中设置，重要操作使用可拖动提示窗，AI 排程会预留用餐、休息及下课出行时间。
 
 到 [Releases](https://github.com/WSDCERFV/shixu/releases/latest) 下载：
 
 | 文件 | 适合谁 | 如何打开 |
 | --- | --- | --- |
-| [Shixu-0.8.5-setup-x64.exe](https://github.com/WSDCERFV/shixu/releases/download/v0.8.5/Shixu-0.8.5-setup-x64.exe) | 希望安装并长期使用 | 双击安装，可选择安装目录 |
-| [Shixu-0.8.5-preview-win-x64.zip](https://github.com/WSDCERFV/shixu/releases/download/v0.8.5/Shixu-0.8.5-preview-win-x64.zip) | 想先体验，不想安装 | 解压整个文件夹，运行“时序预览.exe” |
-| [Shixu-0.8.5-source.zip](https://github.com/WSDCERFV/shixu/releases/download/v0.8.5/Shixu-0.8.5-source.zip) | 想查看、修改或构建源码 | 解压后按下方开发步骤运行 |
+| [Shixu-0.9.3-setup-x64.exe](https://github.com/WSDCERFV/shixu/releases/download/v0.9.3/Shixu-0.9.3-setup-x64.exe) | 希望安装并长期使用 | 双击安装，可选择安装目录 |
+| [Shixu-0.9.3-preview-win-x64.zip](https://github.com/WSDCERFV/shixu/releases/download/v0.9.3/Shixu-0.9.3-preview-win-x64.zip) | 想先体验，不想安装 | 解压整个文件夹，运行“时序预览.exe” |
+| [Shixu-0.9.3-source.zip](https://github.com/WSDCERFV/shixu/releases/download/v0.9.3/Shixu-0.9.3-source.zip) | 想查看、修改或构建源码 | 解压后按下方开发步骤运行 |
 
 安装包和免安装版已包含桌面运行环境，普通使用不需要安装 Node.js。不要在压缩包里直接运行程序，也不要只拷贝其中的 exe。
 
@@ -52,6 +54,8 @@ AI 对话会自动加载 [内置规划技能](desktop/skills/shixu-planner/SKILL
 
 课程默认作为占用时间，普通排程不会顺带重排整份课表。调课请指定课程及原日期，例如“把 11 月 2 日的大学物理实验改到 14:00–15:00”；应用只允许模型处理本轮对应课程，其他课程保留。课表确认后不会在继续对话时重新成为整学期待确认任务。
 
+允许课内安排其他任务的课程，可在“课表导入 → 水课设置”集中标记整门课后续课次或单次课。课程仍保留且受调课保护，其时段允许并行，其他任务之间仍检查冲突。AI 默认预留午餐 12:00–13:00、午休 13:00–13:30、下课后 15 分钟出行，以及早晚餐和夜间睡眠；个人作息可在当前请求中明确说明。
+
 默认语音使用 Windows 系统听写：点击语音按钮聚焦输入框，再按 **Win + H**。识别结果与打字共用同一个输入框。系统听写需要 Windows 支持、麦克风和网络；可选的云端转写需要另外配置兼容的转写服务。
 
 更完整的操作说明见 [使用说明](desktop/使用说明.md) 和 [AI 服务配置](docs/AI_SERVICES.md)。
@@ -62,12 +66,14 @@ AI 对话会自动加载 [内置规划技能](desktop/skills/shixu-planner/SKILL
 | --- | --- |
 | 双模式 | 普通模式保留完整工作台，极简模式集中处理时间规划 |
 | 当日与整周计划 | 分钟级起止时间、五档优先级、标签、拖动、时长编辑与双向选中 |
-| AI 对话与草案 | 内置规划技能、空闲时段、冲突避让；发送状态、流式回复、停止与重试 |
+| 多周计划总览 | 一次看 4 / 8 / 12 周，自动适配列数，点击进入所选周；周计划支持完整或滚动显示 |
+| 批量编辑与撤销 | 空白处直接拖框、Ctrl / Shift 加选、全选范围、批量删除及 Ctrl+Z 撤销 |
+| AI 对话与草案 | 内置规划技能、生活预留、空闲时段、冲突避让；发送状态、流式回复、停止与重试 |
 | 任务详情 | 具体步骤、状态、创建/修改时间、标签、心得及邮件提醒；可拖动或独立到桌面 |
 | 长期与每日计划 | 阶段目标、关联任务、按星期重复与单次调整 |
-| 课表导入 | 其他学校 CSV / ICS 导入；东南大学账号抓取为实验性功能 |
+| 课表与水课 | 其他学校 CSV / ICS 导入、校历日期检查与修复预览、水课并行设置；东南大学账号抓取为实验性功能 |
 | 提醒与专注 | 任务浮窗、轻柔提示音、番茄时钟、专注记录与可选邮件提醒 |
-| 个性化 | 深浅主题、面板透明度、布局宽度、缩放与背景预览 |
+| 个性化 | 功能开关、模块拖动缩放与增删、深浅主题、面板透明度、布局宽度、缩放与背景预览 |
 | 导出 | 导出日程图表，便于保存或分享 |
 | 应用更新 | 手动检查、下载进度、取消、文件校验及保留个人记录的覆盖升级 |
 
